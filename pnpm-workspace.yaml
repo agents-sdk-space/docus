@@ -1,0 +1,47 @@
+packages:
+  - ./
+  - cli
+  - docs
+  - layer
+  - playground
+
+overrides:
+  h3: 1.15.11
+  ai: ^7.0.29
+  '@ai-sdk/vue': ^4.0.29
+  '@ai-sdk/gateway': ^4.0.21
+
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
+  - '@tailwindcss/oxide'
+  - esbuild
+  - unrs-resolver
+  - vue-demi
+
+onlyBuiltDependencies:
+  - '@vercel/speed-insights'
+  - better-sqlite3
+  - sharp
+
+minimumReleaseAge: 2880
+
+minimumReleaseAgeExclude:
+  # Nuxt
+  - '@nuxt/*'
+  - '@nuxtjs/*'
+  - 'nuxt'
+  - 'nuxt-*'
+  # Vercel
+  - '@vercel/*'
+  - '@ai-sdk/*'
+  - 'ai'
+  # Comark
+  - 'comark'
+
+allowBuilds:
+  '@parcel/watcher': false
+  better-sqlite3: true
+  esbuild: false
+  sharp: true
+  unrs-resolver: false
+  vue-demi: false

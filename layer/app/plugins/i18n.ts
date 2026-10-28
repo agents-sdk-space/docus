@@ -1,0 +1,68 @@
+import type { RouteLocationNormalized } from 'vue-router'
+import { consola } from 'consola'
+import { uiLocaleLoaders } from '#build/docus/ui-locales.mjs'
+import { findLocaleFile, getLocaleKey, getLocaleRedirect } from '../../utils/locale'
+
+const log = consola.withTag('docus')
+
+// Lazy import functions for locale files (bundled but not eagerly loaded)
+const localeFiles = import.meta.glob<{ default: Record<string, unknown> }>('../../i18n/locales/*.json')
+
+export default defineNuxtPlugin(async () => {
+  const nuxtApp = useNuxtApp()
+
+  // Only typed when `@nuxtjs/i18n` is installed in the app.
+  const i18nConfig = nuxtApp.$config.public.i18n as { defaultLocale?: string } | undefined
+
+  // If i18n is not enabled, fetch and provide the configured locale in app config
+  if (!i18nConfig) {
+    const appConfig = useAppConfig()
+    const configuredLocale = appConfig.docus.locale || 'en'
+
+    let locale = configuredLocale
+    let resolvedMessages: Record<string, unknown>
+
+    const fileName = findLocaleFile(configuredLocale, Object.keys(localeFiles).map(key => key.split('/').pop()!))
+    const localeLoader = fileName ? localeFiles[`../../i18n/locales/${fileName}`] : undefined
+
+    if (localeLoader) {
+      const localeModule = await localeLoader()
+      resolvedMessages = localeModule.default
+    }
+    else {
+      log.warn(`Missing locale file for "${configuredLocale}". Falling back to "en".`)
+      locale = 'en'
+      const fallbackKey = '../../i18n/locales/en.json'
+      const fallbackLoader = localeFiles[fallbackKey]
+      if (fallbackLoader) {
+        const fallbackModule = await fallbackLoader()
+        resolvedMessages = fallbackModule.default
+      }
+      else {
+        resolvedMessages = {} as Record<string, unknown>
+      }
+    }
+
+    nuxtApp.provide('locale', locale)
+    nuxtApp.provide('localeMessages', resolvedMessages)
+    nuxtApp.provide('uiLocale', await uiLocaleLoaders[getLocaleKey(locale)]?.())
+
+    return
+  }
+
+  const localeCodes = useDocusI18n().locales.map(locale => locale.code)
+
+  addRouteMiddleware((to: RouteLocationNormalized) => {
+    if (to.path === '/') {
+      const cookieLocale = useCookie('i18n_redirected').value || i18nConfig.defaultLocale || 'en'
+
+      return navigateTo(`/${cookieLocale}`)
+    }
+
+    // Content paths are lowercase, so `/zh-TW/...` would 404
+    const redirect = getLocaleRedirect(to.fullPath, localeCodes)
+    if (redirect) {
+      return navigateTo(redirect, { redirectCode: 301 })
+    }
+  })
+})
